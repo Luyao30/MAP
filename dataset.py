@@ -8,7 +8,7 @@ import json
 import h5py
 from collections import Counter
 
-
+# Set instance variables for data directory and dataset name and defines the dataset's division names as [‘train’, ‘valid’, ‘test’]
 class BaseDataset:
     def __init__(self, args):
         self.args = args
@@ -16,7 +16,8 @@ class BaseDataset:
         self.dataset_name = args.dataset_name
         self.split_names = ["train", "valid", "test"]
         self.load_data()
-    
+
+    # The JSON file contains metadata information about the dataset. The metadata includes field names, feature maps, and field maps. After loading, this metadata is saved in instance variables.
     def load_data(self):
         # Load meta data
         meta_data = json.load(open(os.path.join(self.data_dir, f"{self.dataset_name}-meta.json"), "r"))
@@ -36,6 +37,7 @@ class BaseDataset:
         self.X = {split: feat_ids[split_indices[split]] for split in self.split_names}
         self.Y = {split: labels[split_indices[split]] for split in self.split_names}
 
+        # Get the feature count file and calculate the feature count for each field
         self.get_feat_count_file()
         self.count_feat_per_field(feat_ids)
         
@@ -47,18 +49,28 @@ class BaseDataset:
         )
     
     def get_feat_count_file(self):
+        # Get the path for the feat count file
         feat_count_file = os.path.join(self.data_dir, f"feat-count.pt")
-        if self.args.pretrain:
-            if os.path.exists(feat_count_file):
+        if self.args.pretrain: # Check if pretraining flag is enabled
+            if os.path.exists(feat_count_file): # Check if feat count file already exists
+                # Load feat count from the file
                 self.feat_count = torch.load(feat_count_file)
             else:
+                # Create a new feat count tensor initialized with zeros
                 self.feat_count = torch.zeros(len(self.feat_map))
+                
+                # Count the occurrences of each feature in the training set
                 feat_list = self.X["train"].flatten().tolist()
                 feat_count_dict = Counter(feat_list)
+
+                # Update the feat count tensor with the counts
                 for i in range(self.feat_count.shape[0]):
                     self.feat_count[i] = feat_count_dict[i]
+
+                # Save the feat count tensor to the file
                 torch.save(self.feat_count, feat_count_file)
         else:
+            # If pretraining flag is not enabled, set feat_count to None
             self.feat_count = None
     
     def count_feat_per_field(self, feat_ids):
